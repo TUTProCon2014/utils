@@ -8,11 +8,11 @@ enum class Target
 };
 
 
-#ifdef _MSC_VER > 0
+#ifdef _MSC_VER
     #define TARGET_WINDOWS
     #define NOT_SUPPORT_CONSTEXPR
     const Target buildTarget = Target::Windows;
-#elif defined( __APPLE_CC__)
+#elif defined(__APPLE_CC__)
     #define TARGET_OSX
     constexpr Target buildTarget = Target::OSX;
 #else

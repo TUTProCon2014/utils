@@ -5,13 +5,13 @@
 
 #ifdef TARGET_WINDOWS
 #define PROCON_TEMPLATE_CONSTRAINTS(b) typename void*& = procon::utils::enabler_ptr
-#elif
+#else
 #define PROCON_TEMPLATE_CONSTRAINTS(b) typename std::enable_if<(b)>::type *& = procon::utils::enabler_ptr
 #endif
 
 #ifdef TARGET_WINDOWS
 #define PROCON_DEF_TYPE_TRAIT(name, inh, code)
-#elif
+#else
 #define PROCON_DEF_TYPE_TRAIT(name, inh, code)  \
 template <typename T>                           \
 constexpr auto name##_impl(T* p)                \

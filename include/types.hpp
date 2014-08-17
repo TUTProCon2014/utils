@@ -23,7 +23,7 @@ enum class Direction
 */
 #ifdef TARGET_WINDOWS
 #define Index2D std::array<std::size_t, 2>
-#elif
+#else
 using Index2D = std::array<std::size_t, 2>;
 #endif
 

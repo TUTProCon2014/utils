@@ -1,17 +1,19 @@
 #pragma once
 
 #include <iostream>
-// #include "template.hpp"
+#include "template.hpp"
 
 namespace procon { namespace utils{
 
 
-// PROCON_DEF_TYPE_TRAIT(is_image, true,
-// (
-//     identity<size_t>(p->height()),
-//     identity<size_t>(p->width()),
-//     identity(p->get_pixel(0u, 0u))
-// ));
+#ifndef TARGET_WINDOWS
+PROCON_DEF_TYPE_TRAIT(is_image, true,
+(
+    identity<size_t>(p->height()),
+    identity<size_t>(p->width()),
+    identity(p->get_pixel(0u, 0u))
+));
+#endif
 
 
 /** pixelを表す型
@@ -134,13 +136,14 @@ class Problem
         ss1 >> c >> pb._div_x >> pb._div_y;
 
         getline(file, line);    // 最大選択可能回数
-        // std::stringstream ss2(line);
-        ss1 = std::stringstream(line);
-        ss1 >> c >> pb._max_select_times;
+        std::stringstream ss2(line);
+        // ss1 = std::stringstream(line);
+        ss2 >> c >> pb._max_select_times;
 
         getline(file, line);    // コスト変換レート
-        ss1 = std::stringstream(line);
-        ss1 >> c >> pb._select_cost >> pb._change_cost;
+        std::stringstream ss3(line);
+        // ss1 = std::stringstream(line);
+        ss3 >> c >> pb._select_cost >> pb._change_cost;
 
         return boost::optional<Problem>(pb);
     }
