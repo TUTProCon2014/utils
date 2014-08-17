@@ -4,13 +4,14 @@ namespace procon{ namespace utils {
 
 enum class Target
 {
-    Win32, OSX, Linux,
+    Windows, OSX, Linux,
 };
 
 
-#if defined( __WIN32__ ) || defined( _WIN32 )
-    #define TARGET_WIN32
-    const Target buildTarget = Target::Win32;
+#ifdef _MSC_VER > 0
+    #define TARGET_WINDOWS
+    #define NOT_SUPPORT_CONSTEXPR
+    const Target buildTarget = Target::Windows;
 #elif defined( __APPLE_CC__)
     #define TARGET_OSX
     constexpr Target buildTarget = Target::OSX;
