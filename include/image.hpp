@@ -1,6 +1,12 @@
 #pragma once
 
+#include <opencv2/core/core.hpp>
 #include <iostream>
+#include <cstdint>
+#include <memory>
+#include <fstream>
+#include <boost/optional.hpp>
+#include "constants.hpp"
 #include "template.hpp"
 
 namespace procon { namespace utils{
@@ -14,6 +20,7 @@ PROCON_DEF_TYPE_TRAIT(is_image, true,
     identity(p->get_pixel(0u, 0u))
 ));
 #endif
+
 
 
 /** pixelを表す型

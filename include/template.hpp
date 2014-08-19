@@ -1,6 +1,7 @@
 #pragma once
 
 #include <type_traits>
+#include "constants.hpp"
 
 
 #ifdef TARGET_WINDOWS
