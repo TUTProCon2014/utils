@@ -21,11 +21,8 @@ enum class Direction
 
 /** 2次元インデックス
 */
-#ifdef TARGET_WINDOWS
-#define Index2D std::array<std::size_t, 2>
-#else
-using Index2D = std::array<std::size_t, 2>;
-#endif
+typedef std::array<std::size_t, 2> Index2D;
+
 
 Index2D makeIndex2D(std::size_t i, std::size_t j)
 {
