@@ -69,10 +69,11 @@ struct Image
 /**
 全体画像の分割画像を表すクラスです。
 */
+template <typename ImageType>
 class ElementImage
 {
   public:
-    ElementImage(Image m, std::size_t r, std::size_t c, std::size_t div_x, std::size_t div_y)
+    ElementImage(ImageType m, std::size_t r, std::size_t c, std::size_t div_x, std::size_t div_y)
     : _master(m), _pos_x(c), _pos_y(r), _div_x(div_x), _div_y(div_y)
     {}
 
@@ -100,7 +101,7 @@ class ElementImage
 
     /** 元画像に対するスライスで返します。
     */
-    cv::Mat cvMat()
+    auto cvMat() -> decltype(static_cast<ImageType*>(nullptr)->cvMat())
     {
         // sliceなので画像のコピーは発生しない
         return _master.cvMat()(cv::Rect(_pos_x * width(),
@@ -119,15 +120,15 @@ class ElementImage
     }
 
 
-    ElementImage clone() const
+    ElementImage<typename std::remove_const<ImageType>::type> clone() const
     {
         auto dst = _master.clone();
-        return ElementImage(dst, _pos_y, _pos_x, _div_x, _div_y);
+        return decltype(clone())(dst, _pos_y, _pos_x, _div_x, _div_y);
     }
 
 
   private:
-    Image _master;
+    ImageType _master;
     std::size_t _pos_x; // (N, M)に画像が分割されていたとき、(i, j)位置の画像を示すなら i
     std::size_t _pos_y; // (N, M)に画像が分割されていたとき、(i, j)位置の画像を示すなら j]
     std::size_t _div_x;
@@ -218,16 +219,16 @@ class Problem
 
 
     /// インデックス配列におけるi行j列の断片を表すオブジェクトを返します
-    ElementImage get_element(std::size_t r, std::size_t c)
+    ElementImage<Image> get_element(std::size_t r, std::size_t c)
     {
-        ElementImage dst(_master, r, c, _div_x, _div_y);
+        ElementImage<Image> dst(_master, r, c, _div_x, _div_y);
         return dst;
     }
 
 
-    const ElementImage get_element(std::size_t r, std::size_t c) const
+    ElementImage<const Image> get_element(std::size_t r, std::size_t c) const
     {
-        const ElementImage dst(_master, r, c, _div_x, _div_y);
+        ElementImage<const Image> dst(_master, r, c, _div_x, _div_y);
         return dst;
     }
 
