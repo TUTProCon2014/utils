@@ -1,27 +1,21 @@
-#pragma once
+﻿#pragma once
 
 #include <utility>
 #include <opencv2/core/core.hpp>
 #include <iostream>
+#include <type_traits>
 #include <cstdint>
 #include <memory>
 #include <fstream>
 #include <boost/optional.hpp>
+#include <algorithm>
 #include "constants.hpp"
 #include "template.hpp"
+#include "types.hpp"
+#include "range.hpp"
+#include "dwrite.hpp"
 
-namespace procon { namespace utils{
-
-
-#ifndef TARGET_WINDOWS
-PROCON_DEF_TYPE_TRAIT(is_image, true,
-(
-    identity<size_t>(p->height()),
-    identity<size_t>(p->width()),
-    identity(p->get_pixel(0u, 0u))
-));
-#endif
-
+namespace procon { namespace utils {
 
 
 /** pixelを表す型
@@ -42,11 +36,65 @@ struct Pixel
 };
 
 
-// 
-struct Image
+#ifndef NOT_SUPPORT_CONSTEXPR
+PROCON_DEF_TYPE_TRAIT(is_image, true,
+(
+    identity<size_t>(p->height()),
+    identity<size_t>(p->width()),
+    identity<Pixel>(p->get_pixel(0u, 0u)),
+    identity<typename std::remove_const<T>::type>(p->clone())
+));
+#endif
+
+
+#ifndef NOT_SUPPORT_CONSTEXPR
+PROCON_DEF_TYPE_TRAIT(has_cv_image, true,
+(
+    identity(p->cvMat())
+));
+#endif
+
+
+#ifndef NOT_SUPPORT_CONSTEXPR
+PROCON_DEF_TYPE_TRAIT(is_divided_image, is_image,
+(
+    identity<size_t>(p->div_x()),
+    identity<size_t>(p->div_y()),
+    identity(p->get_element(0u, 0u))
+));
+#endif
+
+
+
+template <typename T> constexpr bool isCVMat(){ return std::is_same<cv::Mat, T>::value; }
+template <typename T> constexpr bool isConstCVMat(){ return std::is_same<const cv::Mat, T>::value; }
+
+
+class Image
 {
   public:
-    Image(cv::Mat img) : _img(img) {}
+    template <typename T>
+    static constexpr bool is_same()
+    { return std::is_same<T, Image>::value; }
+
+
+	template <typename T>
+	static constexpr bool isConstructibleCVMat()
+	{ return std::is_constructible<cv::Mat, T>::value; }
+
+  public:
+    
+#ifdef SUPPORT_TEMPLATE_CONSTRAINTS
+    template <typename U
+    , PROCON_TEMPLATE_CONSTRAINTS(isConstructibleCVMat<U>())
+    >
+    explicit Image(U && img)
+    : _img(std::forward<U>(img)) {}
+#else
+    // disable forwarding to move-ctor
+    explicit Image(cv::Mat img)
+    : _img(img) {}
+#endif
 
     std::size_t height() const { return _img.rows; }
     std::size_t width() const { return _img.cols; }
@@ -57,94 +105,188 @@ struct Image
 
     Image clone() const
     {
-        return Image(_img.clone());
+        Image dst(_img.clone());
+        return dst;
     }
+
 
   private:
     cv::Mat _img;
 };
 
 
+template <typename CVMat
+#ifdef SUPPORT_TEMPLATE_CONSTRAINTS
+    , PROCON_TEMPLATE_CONSTRAINTS(isCVMat<std::remove_reference<CVMat>::type>())
+#endif
+>
+Image makeImage(CVMat && img)
+{
+    return Image(std::forward<CVMat>(img));
+}
 
-/**
-全体画像の分割画像を表すクラスです。
-*/
-template <typename ImageType>
-class ElementImage
+
+
+template <typename CVMat
+#ifdef SUPPORT_TEMPLATE_CONSTRAINTS
+    , PROCON_TEMPLATE_CONSTRAINTS(isCVMat<std::remove_reference<CVMat>::type>())
+#endif
+>
+const Image makeImage(const CVMat && img)
+{
+    const Image dst(std::forward<CVMat>(img));
+    return dst;
+}
+
+
+class DividedImage
 {
   public:
-    ElementImage(ImageType m, std::size_t r, std::size_t c, std::size_t div_x, std::size_t div_y)
-    : _master(m), _pos_x(c), _pos_y(r), _div_x(div_x), _div_y(div_y)
+    template <typename T>
+    static constexpr bool is_same()
+    { return std::is_same<DividedImage, T>::value; }
+
+    template <typename T>
+    static constexpr bool isConstructibleImage()
+    { return std::is_constructible<Image, T>::value; }
+
+
+  public:
+    template <typename T
+#ifdef SUPPORT_TEMPLATE_CONSTRAINTS
+        , PROCON_TEMPLATE_CONSTRAINTS(isConstructibleImage<T>())
+#endif
+    >
+    DividedImage(T && m, std::size_t div_x, std::size_t div_y)
+    : _master(std::forward<T>(m)), _div_x(div_x), _div_y(div_y)
     {}
 
 
-    /// 分割画像の高さを返します
-    std::size_t height() const
+    /// 問題画像の高さを返します
+    std::size_t height() const { return _master.height(); }
+
+
+    /// 問題画像の幅を返します
+    std::size_t width() const { return _master.width(); }
+
+
+    /// (w, h) = (i, j) ピクセル目のピクセル値を返します
+    Pixel get_pixel(std::size_t y, std::size_t x) const { return _master.get_pixel(y, x); }
+
+
+    /// 横方向の画像分割数を返します
+    std::size_t div_x() const { return _div_x; }
+    
+
+    /// 縦方向の画像分割数を返します
+    std::size_t div_y() const { return _div_y; }
+
+
+    /// インデックス配列におけるi行j列の断片を表すオブジェクトを返します
+    Image get_element(std::size_t r, std::size_t c)
     {
-        return _master.height() / _div_y;
+        const auto ww = width() / div_x(),
+                   hh = height() / div_y();
+
+        auto mat = cvMat()(cv::Rect(c * ww, r * hh, ww, hh));
+        Image dst(mat);
+        return dst;
     }
 
 
-    /// 分割画像の幅を返します
-    std::size_t width() const
+    const Image get_element(std::size_t r, std::size_t c) const
     {
-        return _master.width() / _div_x;
+        const auto ww = width() / div_x(),
+                   hh = height() / div_y();
+
+        auto mat = cvMat()(cv::Rect(c * ww, r * hh, ww, hh));
+        const Image dst(mat);
+        return dst;
     }
 
 
-    /// 分割画像の(i, j)に位置するピクセル値を返します
-    Pixel get_pixel(std::size_t r, std::size_t c) const
-    {
-        return _master.get_pixel(r + _pos_y * height(), c + _pos_x * width());
-    }
+    cv::Mat & cvMat() { return _master.cvMat(); }
+    cv::Mat const & cvMat() const { return _master.cvMat(); }
 
 
-    /** 元画像に対するスライスで返します。
-    */
-    auto cvMat() -> decltype(static_cast<ImageType*>(nullptr)->cvMat())
-    {
-        // sliceなので画像のコピーは発生しない
-        return _master.cvMat()(cv::Rect(_pos_x * width(),
-                                       _pos_y * height(),
-                                       width(),
-                                       height()));
-    }
-
-
-    const cv::Mat cvMat() const
-    {
-        return _master.cvMat()(cv::Rect(_pos_x * width(),
-                                       _pos_y * height(),
-                                       width(),
-                                       height()));
-    }
-
-
-    ElementImage<typename std::remove_const<ImageType>::type> clone() const
+    DividedImage clone() const
     {
         auto dst = _master.clone();
-        return decltype(clone())(dst, _pos_y, _pos_x, _div_x, _div_y);
+        return DividedImage(dst, _div_x, _div_y);
     }
 
 
   private:
-    ImageType _master;
-    std::size_t _pos_x; // (N, M)に画像が分割されていたとき、(i, j)位置の画像を示すなら i
-    std::size_t _pos_y; // (N, M)に画像が分割されていたとき、(i, j)位置の画像を示すなら j]
+    Image _master;
     std::size_t _div_x;
     std::size_t _div_y;
 };
+
+
+template <typename T
+#ifdef SUPPORT_TEMPLATE_CONSTRAINTS
+    , PROCON_TEMPLATE_CONSTRAINTS(Image::is_same<T>())
+#endif
+>
+DividedImage makeDividedImage(T && img, std::size_t div_x, std::size_t div_y)
+{
+    return DividedImage(std::forward<T>(img), div_x, div_y);
+}
+
+
+template <typename T
+#ifdef SUPPORT_TEMPLATE_CONSTRAINTS
+    , PROCON_TEMPLATE_CONSTRAINTS(Image::is_same<T>())
+#endif
+>
+const DividedImage makeDividedImage(const T && img, std::size_t div_x, std::size_t div_y)
+{
+    const DividedImage dst(std::forward<T>(img), div_x, div_y);
+    return dst;
+}
+
 
 
 /** 問題の各種定数と画像を管理する型です。
 */
 class Problem
 {
+    template <typename T>
+    static constexpr bool isConstructibleImage()
+    { return std::is_constructible<Image, T>::value; }
+
+    template <typename T>
+    static constexpr bool isConstructibleDividedImage()
+    { return std::is_constructible<DividedImage, T>::value; }
+
+
   public:
-    Problem(Image m, std::size_t div_x, std::size_t div_y, int change_cost, int select_cost, std::size_t max_select_times)
-    : _master(m), _div_x(div_x), _div_y(div_y), _change_cost(change_cost), _select_cost(select_cost), _max_select_times(max_select_times)
+#ifdef SUPPORT_TEMPLATE_CONSTRAINTS
+    template <typename T,
+        PROCON_TEMPLATE_CONSTRAINTS(isConstructibleImage<T>())
+    >
+    Problem(T && m, std::size_t div_x, std::size_t div_y, int change_cost, int select_cost, std::size_t max_select_times)
+    : _master(Image(std::forward<T>(m)), div_x, div_y), _change_cost(change_cost), _select_cost(select_cost), _max_select_times(max_select_times)
     {}
 
+    template <typename T,
+        PROCON_TEMPLATE_CONSTRAINTS(isConstructibleDividedImage<T>())
+    >
+    Problem(T && m, int change_cost, int select_cost, std::size_t max_select_times)
+    : _master(std::forward<T>(m)), _change_cost(change_cost), _select_cost(select_cost), _max_select_times(max_select_times)
+    {}
+
+#else
+    // disable forwarding to move ctor
+    Problem(Image m, std::size_t div_x, std::size_t div_y, int change_cost, int select_cost, std::size_t max_select_times)
+    : _master(m, div_x, div_y), _change_cost(change_cost), _select_cost(select_cost), _max_select_times(max_select_times)
+    {}
+
+    Problem(DividedImage m, int change_cost, int select_cost, std::size_t max_select_times)
+    : _master(m), _change_cost(change_cost), _select_cost(select_cost), _max_select_times(max_select_times)
+    {}
+
+#endif
 
     /** ローカルに保存してあるppmファイルを読み込みます。
     * arguments:
@@ -211,26 +353,16 @@ class Problem
 
 
     /// 横方向の画像分割数を返します
-    std::size_t div_x() const { return _div_x; }
+    std::size_t div_x() const { return _master.div_x(); }
     
 
     /// 縦方向の画像分割数を返します
-    std::size_t div_y() const { return _div_y; }
+    std::size_t div_y() const { return _master.div_y(); }
 
 
     /// インデックス配列におけるi行j列の断片を表すオブジェクトを返します
-    ElementImage<Image> get_element(std::size_t r, std::size_t c)
-    {
-        ElementImage<Image> dst(_master, r, c, _div_x, _div_y);
-        return dst;
-    }
-
-
-    ElementImage<const Image> get_element(std::size_t r, std::size_t c) const
-    {
-        ElementImage<const Image> dst(_master, r, c, _div_x, _div_y);
-        return dst;
-    }
+    Image get_element(std::size_t r, std::size_t c) { return _master.get_element(r, c); }
+    const Image get_element(std::size_t r, std::size_t c) const { return _master.get_element(r, c); }
 
 
     /// 交換レートを返します
@@ -251,17 +383,89 @@ class Problem
     Problem clone() const
     {
         auto dst = _master.clone();
-        return Problem(dst, _div_x, _div_y, _change_cost, _select_cost, _max_select_times);
+        return Problem(dst, _change_cost, _select_cost, _max_select_times);
     }
 
 
   private:
-    Image _master;
-    std::size_t _div_x;
-    std::size_t _div_y;
+    DividedImage _master;
     int _change_cost;
     int _select_cost;
     std::size_t _max_select_times;
+};
+
+
+/**
+
+*/
+class SwappedImage
+{
+    template <typename T>
+    static constexpr bool isConstructibleDividedImage()
+    { return std::is_constructible<DividedImage, T>::value; }
+
+    template <typename T
+#ifdef SUPPORT_TEMPLATE_CONSTRAINTS
+        , PROCON_TEMPLATE_CONSTRAINTS(isConstructibleDividedImage<T>())
+#endif
+    >
+    SwappedImage(T && master, std::vector<std::vector<Index2D>> const & idx)
+    : _master(std::forward<T>(master)), _idx(idx)
+    {}
+
+
+    void swap_element(utils::Index2D a, utils::Index2D b)
+    {
+        std::swap(_idx[a[0]][a[1]], _idx[b[0]][b[1]]);
+    }
+
+
+    std::vector<std::vector<Index2D>> const & get_index() const
+    {
+        return _idx;
+    }
+
+
+    cv::Mat cvMat() const
+    {
+        auto cln = _master.clone();
+
+        for(auto i: utils::iota(div_y()))
+            for(auto j: utils::iota(div_x()))
+                get_element(i, j).cvMat().copyTo(cln.get_element(i, j).cvMat());
+
+        return cln.cvMat();
+    }
+
+
+    size_t height() const { return _master.height(); }
+    size_t width() const { return _master.width(); }
+    size_t div_x() const { return _master.div_x(); }
+    size_t div_y() const { return _master.div_y(); }
+    Pixel get_pixel(std::size_t r, std::size_t c) const { return _master.get_pixel(r, c); }
+
+    Image get_element(std::size_t r, std::size_t c)
+    {
+        return _master.get_element(r, c);
+    }
+
+
+    const Image get_element(std::size_t r, std::size_t c) const
+    {
+        return _master.get_element(r, c);
+    }
+
+
+    SwappedImage clone() const
+    {
+        SwappedImage dst(_master.clone(), _idx);
+        return dst;
+    }
+
+
+  private:
+    DividedImage _master;
+    std::vector<std::vector<Index2D>> _idx;
 };
 
 }} // namespace procon::utils
