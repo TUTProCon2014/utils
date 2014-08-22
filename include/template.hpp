@@ -4,13 +4,14 @@
 #include "constants.hpp"
 
 
-#ifdef TARGET_WINDOWS
+#ifdef NOT_SUPPORT_CONSTEXPR
 #define PROCON_TEMPLATE_CONSTRAINTS(b) typename void*& = procon::utils::enabler_ptr
 #else
 #define PROCON_TEMPLATE_CONSTRAINTS(b) typename std::enable_if<(b)>::type *& = procon::utils::enabler_ptr
 #endif
 
-#ifdef TARGET_WINDOWS
+
+#ifdef NOT_SUPPORT_CONSTEXPR
 #define PROCON_DEF_TYPE_TRAIT(name, inh, code)
 #else
 #define PROCON_DEF_TYPE_TRAIT(name, inh, code)  \
