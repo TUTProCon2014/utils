@@ -53,6 +53,7 @@ struct Iota
         IotaIterator & operator--() { --_a; return *this; }
         T operator*() const { return _a; }
         const bool operator!=(IotaIterator const & rhs) const { return _a != rhs._a; }
+        const bool operator==(IotaIterator const & rhs) const { return !(*this != rhs); }
 
         T _a;
     };
@@ -118,16 +119,16 @@ Iota<T> iota(T a)
 
 /**
 */
-template <typename T>
-auto vec_total(T const & vec, std::size_t size)
-    -> typename std::remove_const<typename std::remove_reference<decltype(vec[size])>::type>::type
-{
-    decltype(vec_total(vec, size)) sum = 0;
+// template <typename T>
+// auto vec_total(T const & vec, std::size_t size)
+//     -> typename std::remove_const<typename std::remove_reference<decltype(vec[size])>::type>::type
+// {
+//     decltype(vec_total(vec, size)) sum = 0;
 
-    for(std::size_t i = 0; i < size; ++i)
-        sum += std::abs(vec[i]);
+//     for(std::size_t i = 0; i < size; ++i)
+//         sum += std::abs(vec[i]);
 
-    return sum;
-}
+//     return sum;
+// }
 
 }}
