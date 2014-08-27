@@ -387,6 +387,10 @@ class Problem
     }
 
 
+    DividedImage dividedImage() { return _master; }
+    const DividedImage dividedImage() const { return _master; }
+
+
   private:
     DividedImage _master;
     int _change_cost;
