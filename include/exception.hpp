@@ -9,7 +9,8 @@
 
 namespace procon { namespace utils {
 
-/** funcを評価した場合に、その評価結果がfalse
+/** value が false に評価可能であれば例外を投げます。
+そうでない場合は、value をそのまま返します。
 */
 template <typename T>
 auto enforce(T&& value, std::string const & msg, const char* fname = __FILE__, std::size_t line = __LINE__)
