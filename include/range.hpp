@@ -2,6 +2,7 @@
 
 #include "template.hpp"
 #include <cmath>
+#include <algorithm>
 
 namespace procon { namespace utils {
 
@@ -51,7 +52,9 @@ struct Iota
       public:
         IotaIterator & operator++() { ++_a; return *this; }
         IotaIterator & operator--() { --_a; return *this; }
-        T operator*() const { return _a; }
+        T& operator*() { return _a; }
+        const T& operator*() const { return _a; }
+        const T& operator[](std::size_t i) const { return _a + i; }
         const bool operator!=(IotaIterator const & rhs) const { return _a != rhs._a; }
         const bool operator==(IotaIterator const & rhs) const { return !(*this != rhs); }
 
@@ -98,6 +101,8 @@ struct Iota
 
 
 /**
+a, a+1 , .., b-1
+のような連続する数列を返します。
 */
 template <typename T>
 Iota<T> iota(T a, T b)
@@ -109,26 +114,22 @@ Iota<T> iota(T a, T b)
 }
 
 /**
+0, 1 , .., a-1
+のような連続する数列を返します。
 */
 template <typename T>
-Iota<T> iota(T a)
+Iota<T> iota(T a) { return iota<T>(static_cast<T>(0), a); }
+
+
+template <typename T, typename U>
+bool equal(T const & t, U const & u)
 {
-    return iota<T>(static_cast<T>(0), a);
+    if(t.size() != u.size())
+        return false;
+
+    return std::equal(t.begin(), t.end(), u.begin());
 }
 
 
-/**
-*/
-// template <typename T>
-// auto vec_total(T const & vec, std::size_t size)
-//     -> typename std::remove_const<typename std::remove_reference<decltype(vec[size])>::type>::type
-// {
-//     decltype(vec_total(vec, size)) sum = 0;
-
-//     for(std::size_t i = 0; i < size; ++i)
-//         sum += std::abs(vec[i]);
-
-//     return sum;
-// }
 
 }}
