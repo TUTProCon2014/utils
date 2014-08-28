@@ -2,6 +2,9 @@
 
 #include <algorithm>
 #include <iostream>
+#include "exception.hpp"
+
+namespace procon { namespace utils {
 
 /**
 http://stackoverflow.com/questions/17671772/c11-variadic-printf-performance
@@ -80,3 +83,5 @@ void writeln(Stream & stream, T&& value, Args&&... args)
     write(stream, std::forward<T>(value), std::forward<Args>(args)...);
     stream << std::endl;
 }
+
+}}
