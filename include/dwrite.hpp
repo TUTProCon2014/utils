@@ -14,10 +14,8 @@ void writef(Stream & stream, const char *s)
 {
     while (*s) {
         if (*s == '%') {
-            if (*(s + 1) == '%')
-                ++s;
-            else
-                throw "invalid format string: missing arguments";
+            enforce(*(s + 1) == '%', "invalid format string: missing arguments");
+            ++s;
         }
         stream << *s++;
     }
@@ -39,7 +37,7 @@ void writef(Stream & stream, const char *s, T&& value, Args&&... args)
         }
         stream << *s++;
     }
-    throw "extra arguments provided to printf";
+    enforce(0, "extra arguments provided to printf");
 }
 
 
