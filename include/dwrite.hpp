@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <iostream>
+#include <sstream>
+#include <string>
 #include "exception.hpp"
 
 namespace procon { namespace utils {
@@ -9,11 +11,11 @@ namespace procon { namespace utils {
 /**
 http://stackoverflow.com/questions/17671772/c11-variadic-printf-performance
 
-writef(std::cout, "foo % bar % hoge %\n", 1, 2, 3);  みたいに使う
+swritef(std::cout, "foo % bar % hoge %\n", 1, 2, 3);  みたいに使う
 末尾に改行つかない
 */
 template <typename Stream>
-void writef(Stream & stream, const char *s)
+void swritef(Stream & stream, const char *s)
 {
     while (*s) {
         if (*s == '%') {
@@ -26,7 +28,7 @@ void writef(Stream & stream, const char *s)
 
 
 template <typename Stream, typename T, typename... Args>
-void writef(Stream & stream, const char *s, T&& value, Args&&... args)
+void swritef(Stream & stream, const char *s, T&& value, Args&&... args)
 {
     while (*s) {
         if (*s == '%') {
@@ -34,7 +36,7 @@ void writef(Stream & stream, const char *s, T&& value, Args&&... args)
                 ++s;
             else {
                 stream << std::forward<T>(value);
-                writef(stream, s + 1, std::forward<Args>(args)...); // call even when *s == 0 to detect extra arguments
+                swritef(stream, s + 1, std::forward<Args>(args)...); // call even when *s == 0 to detect extra arguments
                 return;
             }
         }
@@ -45,43 +47,86 @@ void writef(Stream & stream, const char *s, T&& value, Args&&... args)
 
 
 /**
-write(std::cout, 1, ", ", 2, ", ", 3, std::endl); みたいに使う。
+swrite(std::cout, 1, ", ", 2, ", ", 3, std::endl); みたいに使う。
 末尾に改行つかない
 */
-template <typename Stream, typename T>
-void write(Stream & stream, T && value)
-{
-    stream << std::forward<T>(value);
-}
+template <typename Stream>
+void swrite(Stream & stream) {}
 
 
-template <typename Stream, typename T, typename U, typename... Args>
-void write(Stream & stream, T&& value, U&& head, Args&&... args)
+template <typename Stream, typename T, typename... Args>
+void swrite(Stream & stream, T&& value, Args&&... args)
 {
     stream << std::forward<T>(value);
-    write(stream, std::forward<U>(head), std::forward<Args>(args)...);
+    swrite(stream, std::forward<Args>(args)...);
 }
 
 
 /**
-writefの末尾改行ありバージョン
+swritefの末尾改行ありバージョン
 */
 template <typename Stream, typename... Args>
-void writefln(Stream & stream, const char *s, Args&&... args)
+void swritefln(Stream & stream, const char *s, Args&&... args)
 {
-    writef(stream, s, std::forward<Args>(args)...);
+    swritef(stream, s, std::forward<Args>(args)...);
     stream << std::endl;
 }
 
 
 /**
-writeの末尾改行ありバージョン
+swriteの末尾改行ありバージョン
 */
-template <typename Stream, typename T, typename... Args>
-void writeln(Stream & stream, T&& value, Args&&... args)
+template <typename Stream, typename... Args>
+void swriteln(Stream & stream, Args&&... args)
 {
-    write(stream, std::forward<T>(value), std::forward<Args>(args)...);
+    swrite(stream, std::forward<Args>(args)...);
     stream << std::endl;
+}
+
+
+template <typename... Args>
+void writef(const char *s, Args&&... args)
+{
+    swritef(std::cout, s, std::forward<Args>(args)...);
+}
+
+
+template <typename... Args>
+void writefln(const char *s, Args&&... args)
+{
+    swritefln(std::cout, s, std::forward<Args>(args)...);
+}
+
+
+template <typename... Args>
+void write(Args&&... args)
+{
+    swrite(std::cout, std::forward<Args>(args)...);
+}
+
+
+template <typename... Args>
+void writeln(Args&&... args)
+{
+    swriteln(std::cout, std::forward<Args>(args)...);
+}
+
+
+template <typename... Args>
+std::string format(const char *s, Args&&... args)
+{
+    std::stringstream ss;
+    swritef(ss, s, std::forward<Args>(args)...);
+    return ss.str();
+}
+
+
+template <typename... Args>
+std::string text(Args&&... args)
+{
+    std::stringstream ss;
+    swrite(ss, std::forward<Args>(args)...);
+    return ss.str();
 }
 
 }}
