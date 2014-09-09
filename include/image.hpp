@@ -47,6 +47,7 @@ PROCON_DEF_TYPE_TRAIT(is_image, true,
 #endif
 
 
+
 #ifndef NOT_SUPPORT_CONSTEXPR
 PROCON_DEF_TYPE_TRAIT(has_cv_image, true,
 (
@@ -56,14 +57,13 @@ PROCON_DEF_TYPE_TRAIT(has_cv_image, true,
 
 
 #ifndef NOT_SUPPORT_CONSTEXPR
-PROCON_DEF_TYPE_TRAIT(is_divided_image, is_image,
+PROCON_DEF_TYPE_TRAIT(is_divided_image, is_image<T>(),
 (
     identity<size_t>(p->div_x()),
     identity<size_t>(p->div_y()),
     identity(p->get_element(0u, 0u))
 ));
 #endif
-
 
 
 template <typename T> constexpr bool isCVMat(){ return std::is_same<cv::Mat, T>::value; }
@@ -78,9 +78,9 @@ class Image
     { return std::is_same<T, Image>::value; }
 
 
-	template <typename T>
-	static constexpr bool isConstructibleCVMat()
-	{ return std::is_constructible<cv::Mat, T>::value; }
+    template <typename T>
+    static constexpr bool isConstructibleCVMat()
+    { return std::is_constructible<cv::Mat, T>::value; }
 
   public:
     
@@ -115,24 +115,18 @@ class Image
 };
 
 
-template <typename CVMat
-#ifdef SUPPORT_TEMPLATE_CONSTRAINTS
-    , PROCON_TEMPLATE_CONSTRAINTS(isCVMat<std::remove_reference<CVMat>::type>())
-#endif
->
-Image makeImage(CVMat && img)
+template <typename CVMat>
+std::enable_if_t<isCVMat<std::remove_reference<CVMat>::type>(),
+Image> makeImage(CVMat && img)
 {
     return Image(std::forward<CVMat>(img));
 }
 
 
 
-template <typename CVMat
-#ifdef SUPPORT_TEMPLATE_CONSTRAINTS
-    , PROCON_TEMPLATE_CONSTRAINTS(isCVMat<std::remove_reference<CVMat>::type>())
-#endif
->
-const Image makeImage(const CVMat && img)
+template <typename CVMat>
+std::enable_if_t<isCVMat<std::remove_reference<CVMat>::type>(),
+const Image> makeImage(const CVMat && img)
 {
     const Image dst(std::forward<CVMat>(img));
     return dst;
@@ -213,6 +207,16 @@ class DividedImage
     {
         auto dst = _master.clone();
         return DividedImage(dst, _div_x, _div_y);
+    }
+
+
+    template <typename T, typename F>
+	static std::enable_if_t<is_divided_image<T>(),
+	void> foreach(T const & pb, F f)
+    {
+        for(auto i: iota(0, pb.div_y()))
+            for(auto j: iota(0, pb.div_x()))
+                f(i, j);
     }
 
 
@@ -404,6 +408,7 @@ class Problem
 */
 class SwappedImage
 {
+  public:
     template <typename T>
     static constexpr bool isConstructibleDividedImage()
     { return std::is_constructible<DividedImage, T>::value; }
@@ -434,9 +439,9 @@ class SwappedImage
     {
         auto cln = _master.clone();
 
-        for(auto i: utils::iota(div_y()))
-            for(auto j: utils::iota(div_x()))
-                get_element(i, j).cvMat().copyTo(cln.get_element(i, j).cvMat());
+        DividedImage::foreach(_master, [&](std::size_t i, std::size_t j){
+            get_element(i, j).cvMat().copyTo(cln.get_element(i, j).cvMat());
+        });
 
         return cln.cvMat();
     }
@@ -446,17 +451,27 @@ class SwappedImage
     size_t width() const { return _master.width(); }
     size_t div_x() const { return _master.div_x(); }
     size_t div_y() const { return _master.div_y(); }
-    Pixel get_pixel(std::size_t r, std::size_t c) const { return _master.get_pixel(r, c); }
+	Pixel get_pixel(std::size_t r, std::size_t c) const
+	{
+		const auto i = r / _master.div_y(),
+				   j = c / _master.div_x(),
+				   remI = r % _master.div_y(),
+				   remJ = c % _master.div_x();
+		
+		return this->get_element(i, j).get_pixel(remI, remJ);
+	}
 
     Image get_element(std::size_t r, std::size_t c)
     {
-        return _master.get_element(r, c);
+		const auto ij = _idx[r][c];
+        return _master.get_element(ij[0], ij[1]);
     }
 
 
     const Image get_element(std::size_t r, std::size_t c) const
     {
-        return _master.get_element(r, c);
+		const auto ij = _idx[r][c];
+        return _master.get_element(ij[0], ij[1]);
     }
 
 
@@ -467,9 +482,14 @@ class SwappedImage
     }
 
 
+    DividedImage dividedImage() { return _master; }
+    const DividedImage dividedImage() const { return _master; }
+
+
   private:
     DividedImage _master;
     std::vector<std::vector<Index2D>> _idx;
 };
+
 
 }} // namespace procon::utils

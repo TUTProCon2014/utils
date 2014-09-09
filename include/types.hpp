@@ -24,6 +24,7 @@ enum class Direction
 typedef std::array<std::size_t, 2> Index2D;
 
 
+/// ditto
 Index2D makeIndex2D(std::size_t i, std::size_t j)
 {
     Index2D idx;
