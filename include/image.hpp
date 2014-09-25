@@ -66,6 +66,102 @@ PROCON_DEF_TYPE_TRAIT(is_divided_image, is_image<T>(),
 #endif
 
 
+struct ImageID
+{
+    ImageID() : ImageID(0, 0) {}
+
+    explicit ImageID(utils::Index2D idx)
+    : ImageID(idx[0], idx[1]) {}
+
+
+    ImageID(size_t r, size_t c)
+    {
+        _val[0] = r & 0xFF;
+        _val[1] = c & 0xFF;
+    }
+
+
+    template <typename DivImgType>
+    auto get_image(DivImgType & img) const
+    -> std::enable_if_t<is_divided_image<DivImgType>(), decltype(img.get_element(0, 0))>
+    {
+        return img.get_element(_val[0] , _val[1]);
+    }
+
+
+    auto get_index() const
+    {
+        return utils::makeIndex2D(_val[0], _val[1]);
+    }
+
+
+    bool operator==(ImageID const & other) const
+    {
+        return this->_val == other._val;
+    }
+
+
+    bool operator!=(ImageID const & other) const
+    {
+        return !(*this == other);
+    }
+
+
+    int opCmp(ImageID const & other) const
+    {
+        const auto v1 = *reinterpret_cast<uint16_t const *>(&(_val[0]));
+        const auto v2 = *reinterpret_cast<uint16_t const *>(&(other._val[0]));
+
+        if(v1 < v2)
+            return -1;
+        else if(v1 == v2)
+            return 0;
+        else
+            return 1;
+    }
+
+
+    bool operator>=(ImageID const & other) const
+    {
+        return this->opCmp(other) >= 0;
+    }
+
+
+    bool operator>(ImageID const & other) const
+    {
+        return this->opCmp(other) > 0;
+    }
+
+
+    bool operator<(ImageID const & other) const
+    {
+        return this->opCmp(other) < 0;
+    }
+
+
+    bool operator<=(ImageID const & other) const
+    {
+        return this->opCmp(other) <= 0;
+    }
+
+
+    size_t get_hash() const
+    {
+        return std::hash<uint16_t>()((static_cast<uint16_t>(_val[0]) << 8) | _val[1]);
+    }
+
+
+    void to_string(std::ostream& s)
+    {
+        s << "(" << _val[0] << ", " << _val[1] << ")";
+    }
+
+
+  private:
+    uint8_t _val[2];     // 8bit*2
+};
+
+
 template <typename T> constexpr bool isCVMat(){ return std::is_same<cv::Mat, T>::value; }
 template <typename T> constexpr bool isConstCVMat(){ return std::is_same<const cv::Mat, T>::value; }
 
@@ -188,6 +284,9 @@ class DividedImage
     }
 
 
+    Image get_element(ImageID id) { return id.get_image(*this); }
+
+
     const Image get_element(std::size_t r, std::size_t c) const
     {
         const auto ww = width() / div_x(),
@@ -197,6 +296,9 @@ class DividedImage
         const Image dst(mat);
         return dst;
     }
+
+    
+    const Image get_element(ImageID id) const { return id.get_image(*this); }
 
 
     cv::Mat & cvMat() { return _master.cvMat(); }
@@ -211,8 +313,8 @@ class DividedImage
 
 
     template <typename T, typename F>
-	static std::enable_if_t<is_divided_image<T>(),
-	void> foreach(T const & pb, F f)
+    static std::enable_if_t<is_divided_image<T>(),
+    void> foreach(T const & pb, F f)
     {
         for(auto i: iota(0, pb.div_y()))
             for(auto j: iota(0, pb.div_x()))
@@ -366,7 +468,9 @@ class Problem
 
     /// インデックス配列におけるi行j列の断片を表すオブジェクトを返します
     Image get_element(std::size_t r, std::size_t c) { return _master.get_element(r, c); }
+    Image get_element(ImageID id) { return id.get_image(*this); }
     const Image get_element(std::size_t r, std::size_t c) const { return _master.get_element(r, c); }
+    const Image get_element(ImageID id) const { return id.get_image(*this); }
 
 
     /// 交換レートを返します
@@ -418,7 +522,7 @@ class SwappedImage
         , PROCON_TEMPLATE_CONSTRAINTS(isConstructibleDividedImage<T>())
 #endif
     >
-    SwappedImage(T && master, std::vector<std::vector<Index2D>> const & idx)
+    SwappedImage(T && master, std::vector<std::vector<ImageID>> const & idx)
     : _master(std::forward<T>(master)), _idx(idx)
     {}
 
@@ -429,7 +533,7 @@ class SwappedImage
     }
 
 
-    std::vector<std::vector<Index2D>> const & get_index() const
+    std::vector<std::vector<ImageID>> const & get_index() const
     {
         return _idx;
     }
@@ -451,27 +555,25 @@ class SwappedImage
     size_t width() const { return _master.width(); }
     size_t div_x() const { return _master.div_x(); }
     size_t div_y() const { return _master.div_y(); }
-	Pixel get_pixel(std::size_t r, std::size_t c) const
-	{
-		const auto i = r / _master.div_y(),
-				   j = c / _master.div_x(),
-				   remI = r % _master.div_y(),
-				   remJ = c % _master.div_x();
-		
-		return this->get_element(i, j).get_pixel(remI, remJ);
-	}
+    Pixel get_pixel(std::size_t r, std::size_t c) const
+    {
+        const auto i = r / _master.div_y(),
+                   j = c / _master.div_x(),
+                   remI = r % _master.div_y(),
+                   remJ = c % _master.div_x();
+        
+        return this->get_element(i, j).get_pixel(remI, remJ);
+    }
 
     Image get_element(std::size_t r, std::size_t c)
     {
-		const auto ij = _idx[r][c];
-        return _master.get_element(ij[0], ij[1]);
+        return _master.get_element(_idx[r][c]);
     }
 
 
     const Image get_element(std::size_t r, std::size_t c) const
     {
-		const auto ij = _idx[r][c];
-        return _master.get_element(ij[0], ij[1]);
+        return _master.get_element(_idx[r][c]);
     }
 
 
@@ -488,8 +590,20 @@ class SwappedImage
 
   private:
     DividedImage _master;
-    std::vector<std::vector<Index2D>> _idx;
+    std::vector<std::vector<ImageID>> _idx;
 };
 
 
 }} // namespace procon::utils
+
+
+namespace std {
+template<>
+class hash<procon::utils::ImageID> {
+  public:
+    size_t operator()(procon::utils::ImageID const & id) const
+    {
+        return id.get_hash();
+    }
+};
+}

@@ -8,6 +8,7 @@
 #include <type_traits>
 #include "exception.hpp"
 #include "range.hpp"
+#include "template.hpp"
 
 /*
 統一的で、簡単な出力及び文字列変換を提供します。

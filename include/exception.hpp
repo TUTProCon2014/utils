@@ -97,7 +97,7 @@ struct CollectException
     explicit CollectException(std::exception_ptr&& ex) : _ex(ex) {}
     explicit CollectException(T&& rv) : _value(rv) {}
     CollectException(CollectException&& s) = default; // moveコンストラクタは許可する
-	CollectException(CollectException& const s) = default; // 断腸の思い, 許すまじVC++
+    CollectException(CollectException const & s) = default; // 断腸の思い, 許すまじVC++
 
     template <typename F>
     CollectException& onSuccess(F f){
