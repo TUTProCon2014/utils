@@ -66,6 +66,15 @@ PROCON_DEF_TYPE_TRAIT(is_divided_image, is_image<T>(),
 #endif
 
 
+/**
+従来より、Index2Dは「画像位置」と「どの断片か」という異なる二つの意味を持っていました。
+このため、たとえば`std::map<Index2D, Index2D>`がどういう意味か、型からは判断不可能でした。
+
+今回追加したImageIDは、「どの断片か」という情報のみを表すための型です。
+実際には、保持している情報は、Index2Dと同じで、グチャグチャの画像中での断片の位置です。
+
+この変更により、`std::map<ImageID, Index2D>`というように型から意味を完全に把握できるようになりました。
+*/
 struct ImageID
 {
     ImageID() : ImageID(0, 0) {}
