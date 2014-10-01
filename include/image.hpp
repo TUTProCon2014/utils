@@ -106,7 +106,9 @@ struct ImageID
 
     bool operator==(ImageID const & other) const
     {
-        return this->_val == other._val;
+        const auto v1 = this->get_uint16_t();
+        const auto v2 = other.get_uint16_t();
+        return v1 == v2;
     }
 
 
@@ -118,8 +120,8 @@ struct ImageID
 
     int opCmp(ImageID const & other) const
     {
-        const auto v1 = *reinterpret_cast<uint16_t const *>(&(_val[0]));
-        const auto v2 = *reinterpret_cast<uint16_t const *>(&(other._val[0]));
+        const auto v1 = this->get_uint16_t();
+        const auto v2 = other.get_uint16_t();
 
         if(v1 < v2)
             return -1;
@@ -156,18 +158,22 @@ struct ImageID
 
     size_t get_hash() const
     {
-        return std::hash<uint16_t>()((static_cast<uint16_t>(_val[0]) << 8) | _val[1]);
+        return std::hash<uint16_t>()(get_uint16_t());
     }
 
 
     void to_string(std::ostream& s)
     {
-        s << "(" << _val[0] << ", " << _val[1] << ")";
+        // 16進数で xy の順番で出力
+        s << std::hex << static_cast<size_t>(_val[1]) << std::hex << static_cast<size_t>(_val[0]);
     }
 
 
   private:
     uint8_t _val[2];     // 8bit*2
+
+
+    uint16_t get_uint16_t() const { return (static_cast<uint16_t>(_val[0]) << 8) | _val[1]; }
 };
 
 
@@ -615,4 +621,5 @@ class hash<procon::utils::ImageID> {
         return id.get_hash();
     }
 };
+
 }
