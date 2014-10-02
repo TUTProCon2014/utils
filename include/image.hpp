@@ -162,7 +162,7 @@ struct ImageID
     }
 
 
-    void to_string(std::ostream& s)
+    void to_string(std::ostream& s) const
     {
         // 16進数で xy の順番で出力
         s << std::hex << static_cast<size_t>(_val[1]) << std::hex << static_cast<size_t>(_val[0]);
