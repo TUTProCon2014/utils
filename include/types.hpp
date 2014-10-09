@@ -33,4 +33,14 @@ Index2D makeIndex2D(std::size_t i, std::size_t j)
     return idx;
 }
 
+
+///
+template <typename T>
+int opCmp(T a, T b)
+{
+    if(a < b) return -1;
+    else if (a == b) return 0;
+    else return 1;
+}
+
 }} // namespace procon::utils

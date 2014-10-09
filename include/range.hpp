@@ -18,7 +18,7 @@ auto iota(size_t a, size_t b, ptrdiff_t step)
 -> decltype(boost::irange(a, b, step))
 {
     PROCON_ENFORCE(step != 0, "step is 0");
-    PROCON_ENFORCE(step > 0 ? a <= b : a >= b, utils::format("invalid range [%, %), step: %", a, b, step));
+    PROCON_ENFORCE(step > 0 ? a <= b : a >= b, "invalid range");
 
     return boost::irange(a, b, step);
 }
@@ -28,7 +28,7 @@ auto iota(size_t a, size_t b, ptrdiff_t step)
 auto iota(size_t a, size_t b)
 -> decltype(boost::irange(a, b))
 {
-    PROCON_ENFORCE(a <= b, utils::format("invalid range [%, %)", a, b));
+    PROCON_ENFORCE(a <= b, "invalid range [%, %)");
 
     return boost::irange(a, b);
 }

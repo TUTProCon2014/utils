@@ -13,6 +13,7 @@
 
 using namespace procon::utils;
 
+const int timeCoeff = 0;
 
 struct SimulatedImage
 {
@@ -129,7 +130,7 @@ int main()
         std::cin >> std::hex >> idxNum;
         simImage.select(idxNum & 0xF, (idxNum >> 4) & 0xF);
         cv::imshow(windowName, simImage.cvMat());
-        cv::waitKey(pb.select_cost() * 1000 / 100);
+        cv::waitKey(pb.select_cost() * 1000 / 100 * timeCoeff);
 
         ((void)readFrom<int>(std::cin));
 
@@ -138,7 +139,7 @@ int main()
         for(char c: line){
             simImage.evaluate(c);
             cv::imshow(windowName, simImage.cvMat());
-            cv::waitKey(pb.change_cost() * 1000 / 100);
+            cv::waitKey(pb.change_cost() * 1000 / 100 * timeCoeff);
         }
     }
 

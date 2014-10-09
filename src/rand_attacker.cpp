@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <random>
 #include <vector>
+#include <iomanip>
 
 
 #include "../../utils/include/dwrite.hpp"
@@ -14,9 +15,12 @@ int main()
     std::random_device seed_gen;
     std::mt19937 engine(seed_gen());
     std::uniform_int_distribution<size_t> dist(2, 16);
+    std::size_t cnt = 0;
 
     while(1)
     {
+        ++cnt;
+        utils::writefln("The% %th...", std::dec, cnt);
         const size_t rows = dist(engine);
         const size_t cols = dist(engine);
         std::vector<std::vector<utils::ImageID>> idxs;
