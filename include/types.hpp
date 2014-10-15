@@ -99,3 +99,15 @@ int opCmp(const T& v1, const T& v2)
 }
 
 }} // namespace procon::utils
+
+
+namespace std {
+template<>
+class hash<procon::utils::Direction> {
+  public:
+    size_t operator()(procon::utils::Direction const & dir) const
+    {
+        return ::std::hash<size_t>()(static_cast<size_t>(dir));
+    }
+};
+}
