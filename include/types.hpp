@@ -77,7 +77,7 @@ struct DefaultLessCmp {
     template <typename T> static int cmp(const T& v1, const T& v2){
         if(v1 < v2) return -1;
         else if(v2 < v1) return 1;
-        else 0;
+        else return 0;
     }
 };
 
